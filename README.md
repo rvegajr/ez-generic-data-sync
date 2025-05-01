@@ -85,7 +85,17 @@ This project is currently in development. See the [Architecture Checklist](./_Re
 
 ## Getting Started
 
-### Client Application
+For detailed implementation instructions, see our [Usage Guide](./USAGE_GUIDE.md) which covers:
+
+- Basic setup and configuration
+- Repository implementations
+- Working with sync services
+- Handling challenging network conditions
+- Conflict resolution strategies
+- Testing methodologies
+- Advanced scenarios for airline notification delivery
+
+### Quick Start
 
 ```csharp
 // 1. Install NuGet package
@@ -146,6 +156,58 @@ dotnet run
 ```
 
 See the [Server Configuration Guide](./docs/server-config.md) for customization options.
+
+## Testing
+
+Ez-Generic-Data-Sync includes comprehensive testing tools to ensure reliability and correctness:
+
+### Test Runner Script
+
+A versatile testing script is provided in the `_Resources/scripts` directory to simplify running tests:
+
+```bash
+# Run all unit tests
+./_Resources/scripts/run-tests.sh --unit
+
+# Run all functional tests
+./_Resources/scripts/run-tests.sh --functional
+
+# Run both unit and functional tests
+./_Resources/scripts/run-tests.sh --all
+
+# Run tests with specific filters
+./_Resources/scripts/run-tests.sh --unit --test SyncService
+
+# Display detailed test output
+./_Resources/scripts/run-tests.sh --all --verbose
+```
+
+### Test Categories
+
+The test suite includes two main categories:
+
+1. **Unit Tests**: Located in `Src/Tests/UnitTests`, these tests verify individual components in isolation.
+   
+2. **Functional Tests**: Located in `Src/Tests/TestHarness`, this interactive harness tests the library's functionality in realistic scenarios including:
+   - Basic CRUD operations
+   - Network condition simulation
+   - Conflict resolution strategies
+   - Offline capabilities
+   - Performance under various conditions
+
+### Test Harness
+
+The functional test harness provides a CLI environment for testing the sync functionality with simulated network conditions. Run it directly or through the test script:
+
+```bash
+# Run via test script
+./_Resources/scripts/run-tests.sh --functional
+
+# Or run directly 
+dotnet run --project Src/Tests/TestHarness integration-test
+```
+
+For more details on testing methodologies, see the [Usage Guide](./USAGE_GUIDE.md#testing-your-implementation).
 
 ## Contributing
 

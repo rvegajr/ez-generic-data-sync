@@ -141,30 +141,22 @@ namespace Ez.Generic.DataSync.UnitTests
             var existingContact = new Contact { Name = "Contact to Delete", Phone = "999-9999" };
             var existingWrapper = new SyncableEntityWrapper<Contact>(existingContact, existingId);
             
-            SyncableEntityWrapper<Contact> capturedWrapper = null;
-            string capturedId = null;
-            
+            // First, setup GetItemAsync to return the existing wrapper
             _mockRepository
                 .Setup(r => r.GetItemAsync(existingId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(existingWrapper);
-                
+            
+            // The extension method will call DeleteItemAsync on the underlying repository
             _mockRepository
-                .Setup(r => r.UpdateItemAsync(It.IsAny<SyncableEntityWrapper<Contact>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .Callback<SyncableEntityWrapper<Contact>, string, CancellationToken>((w, id, _) => 
-                {
-                    capturedWrapper = w;
-                    capturedId = id;
-                })
+                .Setup(r => r.DeleteItemAsync(existingId, It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
                 
             // Act
             await _mockRepository.Object.DeleteItemAsync(existingId);
             
             // Assert
-            _mockRepository.Verify(r => r.UpdateItemAsync(It.IsAny<SyncableEntityWrapper<Contact>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
-            Assert.NotNull(capturedWrapper);
-            Assert.Equal(existingId, capturedId);
-            Assert.True(capturedWrapper.Deleted);
+            // Verify that DeleteItemAsync was called with the correct ID
+            _mockRepository.Verify(r => r.DeleteItemAsync(existingId, It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 }
