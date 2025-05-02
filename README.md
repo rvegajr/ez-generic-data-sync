@@ -68,8 +68,6 @@ Ez-Generic-Data-Sync works within a client-server architecture:
 - **Client-Side**: The library primarily enhances the client experience with generic typing
 - **Server-Side**: Uses standard Datasync server endpoints (ASP.NET Core)
 
-For development and testing, a lightweight server can be included, but production deployments would use a full Datasync server implementation.
-
 ## Features
 
 - [x] Generic wrapper for any C# class
@@ -81,7 +79,9 @@ For development and testing, a lightweight server can be included, but productio
 
 ## Project Status
 
-This project is currently in development. See the [Architecture Checklist](./_Resources/ARCHITECTURE_CHECKLIST.md) for implementation details and progress.
+**Version 1.0.0 Released!** All tests are passing and the library is ready for production use.
+
+See the [Architecture Checklist](./_Resources/ARCHITECTURE_CHECKLIST.md) for implementation details.
 
 ## Getting Started
 
@@ -99,7 +99,9 @@ For detailed implementation instructions, see our [Usage Guide](./USAGE_GUIDE.md
 
 ```csharp
 // 1. Install NuGet package
-// dotnet add package Ez.Generic.DataSync
+dotnet add package Ez.Generic.DataSync.Core
+// Optional extensions package
+dotnet add package Ez.Generic.DataSync.Extensions
 
 // 2. Register services
 services.AddGenericDataSync<Customer>(options => {
@@ -208,6 +210,14 @@ dotnet run --project Src/Tests/TestHarness integration-test
 ```
 
 For more details on testing methodologies, see the [Usage Guide](./USAGE_GUIDE.md#testing-your-implementation).
+
+## Release Notes
+
+### Version 1.0.0 (May 1, 2025)
+- Initial stable release
+- Full implementation of generic wrapper for CommunityToolkit.Datasync
+- Comprehensive test suite with all tests passing
+- Complete documentation and usage examples
 
 ## Contributing
 

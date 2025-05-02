@@ -4,10 +4,29 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    
+    <!-- NuGet Package Metadata -->
+    <PackageId>Ez.Generic.DataSync.Extensions</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Ricky Vega</Authors>
+    <Company>Noctusoft</Company>
+    <Description>Extensions for Ez.Generic.DataSync.Core that provide additional functionality for working with strongly-typed objects in data synchronization.</Description>
+    <PackageTags>datasync;sync;offline;data;toolkit;extensions</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/rvegajr/ez-generic-data-sync</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/rvegajr/ez-generic-data-sync</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <FileVersion>1.0.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Ez.Generic.DataSync.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 </Project>

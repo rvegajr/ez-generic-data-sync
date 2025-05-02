@@ -4,10 +4,29 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    
+    <!-- NuGet Package Metadata -->
+    <PackageId>Ez.Generic.DataSync.Core</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Ricky Vega</Authors>
+    <Company>Noctusoft</Company>
+    <Description>A generic wrapper for the CommunityToolkit/Datasync library that adds strongly-typed object support.</Description>
+    <PackageTags>datasync;sync;offline;data;toolkit</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/rvegajr/ez-generic-data-sync</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/rvegajr/ez-generic-data-sync</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <FileVersion>1.0.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Datasync.Client" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 </Project>
