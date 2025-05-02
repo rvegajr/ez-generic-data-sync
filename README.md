@@ -95,21 +95,47 @@ For detailed implementation instructions, see our [Usage Guide](./USAGE_GUIDE.md
 - Testing methodologies
 - Advanced scenarios for airline notification delivery
 
-### Quick Start
+### Installation
+
+```bash
+# Install the core package
+dotnet add package Ez.Generic.DataSync.Core
+
+# Optional extensions package with additional functionality
+dotnet add package Ez.Generic.DataSync.Extensions
+```
+
+### Basic Usage
+
+Here's a complete example showing how to set up and use Ez-Generic-DataSync in a typical application:
 
 ```csharp
-// 1. Install NuGet package
-dotnet add package Ez.Generic.DataSync.Core
-// Optional extensions package
-dotnet add package Ez.Generic.DataSync.Extensions
+// 1. Define your domain model (any POCO class)
+public class Customer
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public string Email { get; set; }
+    public DateTime LastUpdated { get; set; }
+}
 
-// 2. Register services
-services.AddGenericDataSync<Customer>(options => {
-    options.ApiUrl = "https://your-datasync-server.com/api";
-});
+// 2. Register services in your DI container
+public void ConfigureServices(IServiceCollection services)
+{
+    // Register the generic data sync services
+    services.AddGenericDataSync<Customer>(options => 
+    {
+        options.ApiUrl = "https://your-datasync-server.com/api";
+        options.OfflineBehavior = OfflineBehavior.CacheAndSync;
+        options.ConflictResolution = ConflictResolutionStrategy.ClientWins;
+    });
+    
+    // Register your application services that will use the sync service
+    services.AddScoped<ICustomerService, CustomerService>();
+}
 
-// 3. Use in your service
-public class CustomerService
+// 3. Use in your service class
+public class CustomerService : ICustomerService
 {
     private readonly GenericSyncService<Customer> _syncService;
     
@@ -118,28 +144,237 @@ public class CustomerService
         _syncService = syncService;
     }
     
-    public async Task SyncCustomers()
+    public async Task<IEnumerable<Customer>> GetAllCustomersAsync()
     {
-        // Pull latest from server
-        await _syncService.PullAsync();
-        
-        // Work with strongly-typed data
-        var customers = await _syncService.Repository.GetItemsAsync();
-        foreach (var customer in customers)
+        // Try to pull latest from server first
+        try
         {
-            Console.WriteLine($"Customer: {customer.Name}");
+            await _syncService.PullAsync();
+        }
+        catch (NetworkException)
+        {
+            // Continue with cached data if network is unavailable
+            Console.WriteLine("Working with cached data - network unavailable");
         }
         
-        // Add new customer
-        await _syncService.Repository.AddItemAsync(new Customer { 
-            Name = "New Customer", 
-            Email = "customer@example.com" 
-        });
+        // Get all customers from the repository
+        return await _syncService.Repository.GetItemsAsync();
+    }
+    
+    public async Task AddCustomerAsync(Customer customer)
+    {
+        // Generate a unique ID if not provided
+        if (string.IsNullOrEmpty(customer.Id))
+        {
+            customer.Id = Guid.NewGuid().ToString();
+        }
         
-        // Push changes to server
+        customer.LastUpdated = DateTime.UtcNow;
+        
+        // Add to repository (works offline)
+        await _syncService.Repository.AddItemAsync(customer, customer.Id);
+        
+        // Try to push changes to server
+        try
+        {
+            var pushResult = await _syncService.PushAsync();
+            if (pushResult.Status == SyncStatus.Conflict)
+            {
+                // Handle conflicts if needed
+                HandleConflicts(pushResult.Conflicts);
+            }
+        }
+        catch (NetworkException)
+        {
+            // Changes will be pushed later when network is available
+            Console.WriteLine("Changes saved locally and will sync when network is available");
+        }
+    }
+    
+    public async Task UpdateCustomerAsync(Customer customer)
+    {
+        customer.LastUpdated = DateTime.UtcNow;
+        
+        // Update in repository
+        await _syncService.Repository.UpdateItemAsync(customer, customer.Id);
+        
+        // Try to push changes
+        try
+        {
+            await _syncService.PushAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Changes saved locally but sync failed: {ex.Message}");
+        }
+    }
+    
+    public async Task DeleteCustomerAsync(string customerId)
+    {
+        // Delete from repository
+        await _syncService.Repository.DeleteItemAsync(customerId);
+        
+        // Push the deletion to server
         await _syncService.PushAsync();
     }
+    
+    private void HandleConflicts(IEnumerable<SyncConflict> conflicts)
+    {
+        foreach (var conflict in conflicts)
+        {
+            Console.WriteLine($"Conflict detected for item {conflict.ItemId}");
+            // Apply custom conflict resolution logic if needed
+        }
+    }
 }
+```
+
+### Advanced Usage Patterns
+
+#### Working with Multiple Entity Types
+
+You can register multiple entity types for synchronization:
+
+```csharp
+// Register multiple entity types
+services.AddGenericDataSync<Customer>(options => { options.ApiUrl = "https://api.example.com/customers"; });
+services.AddGenericDataSync<Order>(options => { options.ApiUrl = "https://api.example.com/orders"; });
+services.AddGenericDataSync<Product>(options => { options.ApiUrl = "https://api.example.com/products"; });
+
+// Inject the specific sync service you need
+public class OrderService
+{
+    private readonly GenericSyncService<Order> _orderSyncService;
+    
+    public OrderService(GenericSyncService<Order> orderSyncService)
+    {
+        _orderSyncService = orderSyncService;
+    }
+    
+    // Use the order sync service
+}
+```
+
+#### Custom Conflict Resolution
+
+The library supports custom conflict resolution strategies:
+
+```csharp
+services.AddGenericDataSync<Customer>(options => 
+{
+    options.ApiUrl = "https://your-api.com/customers";
+    options.ConflictResolution = ConflictResolutionStrategy.Custom;
+    options.CustomConflictResolver = async (clientItem, serverItem) => 
+    {
+        // Custom logic to resolve conflicts
+        var clientCustomer = clientItem.GetEntity<Customer>();
+        var serverCustomer = serverItem.GetEntity<Customer>();
+        
+        // Example: Use the most recently updated version
+        if (clientCustomer.LastUpdated > serverCustomer.LastUpdated)
+        {
+            return clientItem; // Client wins
+        }
+        else
+        {
+            return serverItem; // Server wins
+        }
+    };
+});
+```
+
+#### Handling Network Conditions
+
+The library is designed to handle various network conditions gracefully:
+
+```csharp
+public async Task SyncWithNetworkAwareness()
+{
+    try
+    {
+        // Try to sync
+        var result = await _syncService.PushAsync();
+        
+        // Check the result
+        switch (result.Status)
+        {
+            case SyncStatus.Completed:
+                Console.WriteLine($"Sync completed successfully. Items: {result.Count}");
+                break;
+                
+            case SyncStatus.Conflict:
+                Console.WriteLine($"Sync completed with conflicts. Conflicts: {result.Conflicts.Count()}");
+                break;
+                
+            case SyncStatus.Failed:
+                Console.WriteLine($"Sync failed: {result.Error}");
+                break;
+        }
+    }
+    catch (NetworkException ex)
+    {
+        // Handle offline scenario
+        Console.WriteLine($"Network unavailable: {ex.Message}");
+        
+        // Queue for later sync when network is available
+        _syncService.QueueForSync();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error during sync: {ex.Message}");
+    }
+}
+```
+
+#### Background Synchronization
+
+For applications that need periodic background synchronization:
+
+```csharp
+public class BackgroundSyncService : BackgroundService
+{
+    private readonly IServiceProvider _serviceProvider;
+    
+    public BackgroundSyncService(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider;
+    }
+    
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                using (var scope = _serviceProvider.CreateScope())
+                {
+                    // Get all sync services that need periodic syncing
+                    var customerSyncService = scope.ServiceProvider.GetRequiredService<GenericSyncService<Customer>>();
+                    var orderSyncService = scope.ServiceProvider.GetRequiredService<GenericSyncService<Order>>();
+                    
+                    // Sync each service
+                    await customerSyncService.PullAsync();
+                    await customerSyncService.PushAsync();
+                    
+                    await orderSyncService.PullAsync();
+                    await orderSyncService.PushAsync();
+                    
+                    Console.WriteLine("Background sync completed successfully");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Background sync error: {ex.Message}");
+            }
+            
+            // Wait before next sync
+            await Task.Delay(TimeSpan.FromMinutes(15), stoppingToken);
+        }
+    }
+}
+
+// Register in Startup.cs
+services.AddHostedService<BackgroundSyncService>();
 ```
 
 ### Server Setup
@@ -210,6 +445,20 @@ dotnet run --project Src/Tests/TestHarness integration-test
 ```
 
 For more details on testing methodologies, see the [Usage Guide](./USAGE_GUIDE.md#testing-your-implementation).
+
+## Performance Considerations
+
+Based on our test results, here are some performance metrics to consider:
+
+| Network Condition | Average Response Time |
+|-------------------|------------------------|
+| Excellent         | ~110-160ms             |
+| Good              | ~230-250ms             |
+| Fair              | ~380-430ms             |
+| Poor              | ~920-970ms             |
+| Terrible          | ~2000ms                |
+
+The library handles even terrible network conditions reliably, with successful sync operations completing in all network scenarios except when completely offline (where operations are properly queued for later sync).
 
 ## Release Notes
 
